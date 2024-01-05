@@ -3,6 +3,7 @@ module Codex.Project where
 import Control.Applicative ((<|>))
 import Control.Exception (try, SomeException)
 import Control.Monad (filterM)
+import SimpleCabal
 import Data.Bool (bool)
 import Data.Function
 import Data.List (delete, isPrefixOf, union)
