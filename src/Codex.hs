@@ -1,7 +1,7 @@
 module Codex (Codex(..), defaultStackOpts, defaultTagsFileName, Verbosity, module Codex) where
 
 import Network.HTTP.Client (httpLbs, Manager, Response(..), parseRequest)
-import Control.Exception (try, SomeException)
+import Control.Exception (try, SomeException, evaluate)
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Except
@@ -16,6 +16,7 @@ import System.Console.AsciiProgress (def, newProgressBar, Options(..), tick)
 import System.Directory
 import System.FilePath
 import System.Process
+import System.IO( IOMode( ReadMode ), withFile, hGetContents' )
 
 import qualified Data.ByteArray.Encoding as BA
 import qualified Codec.Archive.Tar as Tar
@@ -154,6 +155,10 @@ tags bldr cx i = taggerCmdRun cx sources tags' where
     tags' = packageTags hp i
     hp = hackagePathOf bldr cx
 
+doit :: FilePath -> IO () -> IO TextL.Text
+-- doit f tick' = TLIO.readFile f <* tick'
+doit f tick' = withFile f ReadMode (\h -> fmap TextL.pack (hGetContents' h) <* tick')
+
 assembly :: Builder -> Codex -> [PackageIdentifier] -> String -> [WorkspaceProject] -> FilePath -> Action FilePath
 assembly bldr cx dependencies projectHash workspaceProjects o = do
   xs <- join . maybeToList <$> projects workspaceProjects
@@ -170,7 +175,7 @@ assembly bldr cx dependencies projectHash workspaceProjects o = do
     mergeTags files' o' = do
       files'' <- filterM doesFileExist files'
       tick' <- newProgressBar' "Merging tags" (length files'')
-      contents <- traverse (\f -> TLIO.readFile f <* tick') files''
+      contents <- traverse (`doit` tick') files''
       case files' \\ files'' of
         [] -> return ()
         xs -> do
